@@ -1,15 +1,25 @@
 var user = {
-    id: 'Ammar'
+    id: ''
 }
 
+var socket = io.connect('http://localhost:3000');
 
+socket.on('user came', addUser);
+socket.on('user left', removeUser);
+socket.on('load previous users', addCurrentUsers);
 
-function addUser (data) {
-    var userElement = '<div class="user '+ data.id + '"><div class="info"><p>'+ data.id+'</p></div><div class="call"><button>Call</button></div></div>';
+function addCurrentUsers (ids) {
+    ids.forEach(id => {
+        addUser(id);
+    });
+}
+
+function addUser (id) {
+    var userElement = '<div class="user '+ id + '"><div class="info"><p>'+ id+'</p></div><div class="call"><button>Call</button></div></div>';
     $("body").append(userElement);
 }
 
-function removeUser (data) {
-    var user = $("body").find('div.'+data.id);
+function removeUser (id) {
+    var user = $("body").find('div.'+id);
     user.remove();
 }

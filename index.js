@@ -11,3 +11,31 @@ function started () {
 }
 
 app.use(express.static('public'));
+
+var socket = require('socket.io');
+
+var io = socket(server);
+
+io.on("connection", newConnection);
+
+var ids = [];
+
+function newConnection (socket) {
+    console.log("New Connection: " + socket.id);
+    socket.emit('load previous users', ids);
+    ids.push(socket.id);
+    socket.broadcast.emit('user came', socket.id);
+    socket.on('disconnect', function () {
+        console.log(socket.id + " left.");
+        //Remove from Array
+        var search_term = socket.id;
+        for (var i=ids.length-1; i>=0; i--) {
+            if (ids[i] === search_term) {
+                ids.splice(i, 1);
+                break;
+            }
+        }
+        //Broadcast to other users
+        socket.broadcast.emit('user left', socket.id);
+    });
+}
