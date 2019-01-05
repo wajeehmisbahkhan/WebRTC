@@ -1,0 +1,25 @@
+{
+  "name": "webrtc",
+  "version": "1.0.0",
+  "description": "Testing ground for WebRTC.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wajeehmisbahkhan/WebRTC.git"
+  },
+  "keywords": [
+    "WebRTC",
+    "Node",
+    "NPM",
+    "Server-Side"
+  ],
+  "author": "Wajeeh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wajeehmisbahkhan/WebRTC/issues"
+  },
+  "homepage": "https://github.com/wajeehmisbahkhan/WebRTC#readme"
+}
