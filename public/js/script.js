@@ -1,7 +1,9 @@
 var callIds = {
-    callerId: '',
-    calleeId: ''
-}
+    myId: '',
+    otherId: ''
+};
+
+var i = 0;
 
 var socket = io.connect('http://localhost:3000');
 
@@ -30,19 +32,17 @@ function removeUser (id) {
 }
 
 function setId (id) {
-    callIds.callerId = id;
+    callIds.myId = id;
 }
 
 //WEBRTC STUFF
-var peer = new SimplePeer({
-    trickle: false
-});
+var peer;
 
 function callPerson (e) {
     //Add a basic video and screen place to the body
     e.preventDefault();
     var id = $(this).parent().parent().attr('id');
-    callIds.calleeId = id;
+    callIds.otherId = id;
     $('body').html('<p>Calling...</p>');
     //Get the User Media
     navigator.mediaDevices.getUserMedia({
@@ -52,14 +52,24 @@ function callPerson (e) {
             frameRate: {max: 10},
             mediaStreamSource: {exact: ['desktop']}
           },
-        audio: true
+        audio: false
     }).then(function (stream) {
-        peer.initiator = true;
-        peer.stream = stream;
+        peer = new SimplePeer({
+            initiator: true,
+            trickle: false,
+            stream: stream
+        });
 
         peer.on('signal', function (data) { //Fired by Initiator
-            socket.emit('calling', data, callIds.calleeId);
+            if (i == 0) {
+                i++;
+                socket.emit('calling', data, callIds);
+            }
         });
+
+        peer.on('data', function (msg) {
+            console.log(msg);
+        })
 
         peer.on('stream', function (stream) {
             var video = document.createElement('video');
@@ -67,36 +77,44 @@ function callPerson (e) {
             video.srcObject = stream;
             video.play();
         });
-    
+
         }).catch(function (err) {
             console.log(err);
         });
 
 }
 
-function respond (data) {
+function respond (data, otherId) {
+    callIds.otherId = otherId;
     //Add a basic video and screen place to the body
     $('body').html('<p>Connecting to a caller...</p>');
     //WebRTC Stuff
     navigator.mediaDevices.getUserMedia({
-        video: {
-            width: {max: 1920},
-            height: {max: 1080},
-            frameRate: {max: 10},
-            mediaStreamSource: {exact: ['desktop']}
-          },
+        // video: {
+        //     width: {max: 1920},
+        //     height: {max: 1080},
+        //     frameRate: {max: 10},
+        //     mediaStreamSource: {exact: ['desktop']}
+        //   },
         audio: true
     }).then(function (stream) {
-    
-        peer.initiator = false;
-        peer.stream = stream;
-    
-        peer.signal(data); //Creates a response
 
+        peer = new SimplePeer({
+            initiator: false,
+            trickle: false,
+            stream: stream
+        });
+
+        peer.signal(data);
 
         peer.on('signal', function (response) {
-            socket.emit('responded', response, callIds.callerId);
-        });
+            console.log(response);
+            socket.emit('responded', response, callIds.otherId);
+        })
+
+        peer.on('data', function (msg) {
+            console.log(msg);
+        })
 
         peer.on('stream', function (stream) {
             var video = document.createElement('video');
@@ -108,8 +126,10 @@ function respond (data) {
         }).catch(function (err) {
             console.log(err);
         });
+
 }
 
 function startCall (response) {
-
+    console.log(response);
+    peer.signal(response);
 }

@@ -46,8 +46,8 @@ function newConnection (socket) {
     socket.on('responded', connectClients);
 }
 
-function generateResponse (data, callee) {
-    io.to(callee).emit('recieving call', data);
+function generateResponse (data, callIds) {
+    io.to(callIds.otherId).emit('recieving call', data, callIds.myId);
 }
 
 function connectClients (response, caller) {
