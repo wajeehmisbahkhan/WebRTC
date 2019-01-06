@@ -42,8 +42,14 @@ function newConnection (socket) {
     });
     //Calling
     socket.on('calling', generateResponse);
+    //Respond
+    socket.on('responded', connectClients);
 }
 
 function generateResponse (data, callee) {
     io.to(callee).emit('recieving call', data);
+}
+
+function connectClients (response, caller) {
+    io.to(caller).emit('call recieved', response);
 }

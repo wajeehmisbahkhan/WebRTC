@@ -10,6 +10,7 @@ socket.on('set user id', setId);
 socket.on('user left', removeUser);
 socket.on('load previous users', addCurrentUsers);
 socket.on('recieving call', respond);
+socket.on('call recieved', startCall);
 
 function addCurrentUsers (ids) {
     ids.forEach(id => {
@@ -33,6 +34,9 @@ function setId (id) {
 }
 
 //WEBRTC STUFF
+var peer = new SimplePeer({
+    trickle: false
+});
 
 function callPerson (e) {
     //Add a basic video and screen place to the body
@@ -50,11 +54,8 @@ function callPerson (e) {
           },
         audio: true
     }).then(function (stream) {
-        var peer = new SimplePeer({
-            initiator: true,
-            trickle: false,
-            stream: stream
-        });
+        peer.initiator = true;
+        peer.stream = stream;
 
         peer.on('signal', function (data) { //Fired by Initiator
             socket.emit('calling', data, callIds.calleeId);
@@ -65,7 +66,7 @@ function callPerson (e) {
             document.body.appendChild(video);
             video.srcObject = stream;
             video.play();
-        })
+        });
     
         }).catch(function (err) {
             console.log(err);
@@ -87,27 +88,28 @@ function respond (data) {
         audio: true
     }).then(function (stream) {
     
-    var peer = new SimplePeer({
-        initiator: false,
-        trickle: false,
-        stream: stream
-    });
+        peer.initiator = false;
+        peer.stream = stream;
     
-    peer.signal(data); //Creates a response
+        peer.signal(data); //Creates a response
 
 
-    // peer.on('signal', function (data) {
-    //     socket.emit('respond', data);
-    // });
+        peer.on('signal', function (response) {
+            socket.emit('responded', response, callIds.callerId);
+        });
 
-    peer.on('stream', function (stream) {
-        var video = document.createElement('video');
-        document.body.appendChild(video);
-        video.srcObject = stream;
-        video.play();
-    })
+        peer.on('stream', function (stream) {
+            var video = document.createElement('video');
+            document.body.appendChild(video);
+            video.srcObject = stream;
+            video.play();
+        })
 
-    }).catch(function (err) {
-        console.log(err);
-    });
+        }).catch(function (err) {
+            console.log(err);
+        });
+}
+
+function startCall (response) {
+
 }
