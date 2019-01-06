@@ -1,4 +1,4 @@
-var data = {
+var callIds = {
     callerId: '',
     calleeId: ''
 }
@@ -29,18 +29,85 @@ function removeUser (id) {
 }
 
 function setId (id) {
-    data.callerId = id;
+    callIds.callerId = id;
 }
+
+//WEBRTC STUFF
 
 function callPerson (e) {
     //Add a basic video and screen place to the body
     e.preventDefault();
     var id = $(this).parent().parent().attr('id');
-    data.calleeId = id;
+    callIds.calleeId = id;
     $('body').html('<p>Calling...</p>');
-    socket.emit('calling', data);
+    //Get the User Media
+    navigator.mediaDevices.getUserMedia({
+        video: {
+            width: {max: 1920},
+            height: {max: 1080},
+            frameRate: {max: 10},
+            mediaStreamSource: {exact: ['desktop']}
+          },
+        audio: true
+    }).then(function (stream) {
+        var peer = new SimplePeer({
+            initiator: true,
+            trickle: false,
+            stream: stream
+        });
+
+        peer.on('signal', function (data) { //Fired by Initiator
+            socket.emit('calling', data, callIds.calleeId);
+        });
+
+        peer.on('stream', function (stream) {
+            var video = document.createElement('video');
+            document.body.appendChild(video);
+            video.srcObject = stream;
+            video.play();
+        })
+    
+        }).catch(function (err) {
+            console.log(err);
+        });
+
 }
 
 function respond (data) {
-    console.log(data);
+    //Add a basic video and screen place to the body
+    $('body').html('<p>Connecting to a caller...</p>');
+    //WebRTC Stuff
+    navigator.mediaDevices.getUserMedia({
+        video: {
+            width: {max: 1920},
+            height: {max: 1080},
+            frameRate: {max: 10},
+            mediaStreamSource: {exact: ['desktop']}
+          },
+        audio: true
+    }).then(function (stream) {
+    
+    var peer = new SimplePeer({
+        initiator: false,
+        trickle: false,
+        stream: stream
+    });
+    
+    peer.signal(data); //Creates a response
+
+
+    // peer.on('signal', function (data) {
+    //     socket.emit('respond', data);
+    // });
+
+    peer.on('stream', function (stream) {
+        var video = document.createElement('video');
+        document.body.appendChild(video);
+        video.srcObject = stream;
+        video.play();
+    })
+
+    }).catch(function (err) {
+        console.log(err);
+    });
 }

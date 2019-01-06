@@ -13,7 +13,6 @@ function started () {
 app.use(express.static('public'));
 
 var socket = require('socket.io');
-var Peer = require('simple-peer');
 
 var io = socket(server);
 
@@ -45,17 +44,6 @@ function newConnection (socket) {
     socket.on('calling', generateResponse);
 }
 
-function generateResponse (data) {
-    console.log(data.calleeId);
-    var peer = new Peer({
-        initiator: true,
-        trickle: false
-    });
-    var callerData;
-    peer.on('signal', function (data) {
-        callerData = data;
-        console.log(callerData);
-        io.to(data.calleeId).emit('recieving call', callerData);
-    });
-
+function generateResponse (data, callee) {
+    io.to(callee).emit('recieving call', data);
 }
