@@ -12,6 +12,26 @@
 </head>
 <body>
     <h3>Present Users On The Server:</h3>
+    <div id="users"></div>
+    <div id="call-cover">
+        <div id="confirm-screen">
+            <p><span id="caller-id"></span> is calling you...</p>
+            <form>
+                <input type="checkbox" value="Audio">Audio</input>
+                <input type="checkbox" value="Video">Video</input>
+                <input type="checkbox" value="Screen">Screen</input>
+            </form>
+            <button class="btn btn-primary">Answer</button>
+        </div>
+        <div id="call-screen">
+            <div id="call-container"></div>
+            <div id="call-controls">
+                <button id="video-record" class="btn btn-info" disabled>Record Video</button>
+                <button id="video-record-pause" class="btn btn-info" disabled>Pause Recording</button>
+                <button id="end-call video-record-stop" class="btn btn-danger">End Call</button>
+            </div>
+        </div>
+    </div>
     <script src="js/simple-peer/simplepeer.min.js"></script>
     <script src="js/script.js"></script>
 </body>

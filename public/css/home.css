@@ -1,3 +1,85 @@
+/*Front Page*/
+h3 {
+    text-align: center;
+}
 .info, .call {
     display: inline-block;
+}
+.user {
+    margin-bottom: 5px;
+}
+.info {
+    width: 70%;
+    text-align: center;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+}
+.info>p {
+    margin-top: 5px;
+    font-size: 20px;
+}
+.info>form {
+    margin-bottom: 5px;
+}
+input {
+    width: 15%;
+}
+.call {
+    width: 30%;
+    text-align: center;
+}
+.user button {
+    width: 80%;
+    height: 100%;
+}
+/*Call*/
+#call-cover {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: none; /*Change to flex*/
+    align-items: center;
+    justify-content: center;
+}
+/*Confirmation*/
+#confirm-screen { /*Main Width Setter For Call Screen*/
+    padding: 25px 10px;
+    background-color: aliceblue;
+    display: none;
+}
+#confirm-screen p {
+    text-align: center;
+}
+#confirm-screen form {
+    min-width: 300px;
+    padding: 20px 0;
+}
+#confirm-screen button {
+    width: 100%;
+}
+/*Screen*/
+#call-screen { /*Main Width Setter For Call Screen*/
+    width: 90vw;
+    height: 90vh;
+    background-color: aliceblue;
+    display: none;
+}
+#call-container {
+    width: 100%;
+    height: 90%;
+    position: relative;
+    background-color: black;
+}
+#call-controls {
+    width: 100%;
+    height: 10%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#call-controls button {
+    margin: 0 15px;
 }

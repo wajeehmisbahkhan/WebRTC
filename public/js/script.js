@@ -3,8 +3,6 @@ var callIds = {
     otherId: ''
 };
 
-var i = 0;
-
 var socket = io.connect('http://localhost:3000');
 
 socket.on('user came', addUser);
@@ -21,9 +19,25 @@ function addCurrentUsers (ids) {
 }
 
 function addUser (id) {
-    var userElement = '<div class="user" id="'+ id + '"><div class="info"><p>'+ id+'</p></div><div class="call"><button>Call</button></div></div>';
-    $("body").append(userElement);
-    $('button').click(callPerson);
+    var userElement = '<div class="user nav nav-pills nav-fill bg-success" id="'+ id + '"><div class="info"><p>'+ id+'</p><form><input type="checkbox" value="Audio">Audio</input><input type="checkbox" value="Video">Video</input><input type="checkbox" value="Screen">Screen</input></form></div><div class="call"><button class="btn btn-primary">Call</button></div></div>';
+    $("#users").append(userElement);
+    //Prevent user from ticking both video and screen
+    var form = $('div#'+id).find('form');
+    form.click(preventDoubleScreen);
+    form.parent().parent().find('button').click(callPerson);
+}
+
+function preventDoubleScreen (e) {
+    var video = $(this).find('input:nth-child(2)')[0],
+        screen = $(this).find('input:nth-child(3)')[0],
+        target = $(e.target)[0];
+    if (target === video) {
+        if ($(screen).is(':checked'))
+            $(screen).prop('checked', false);
+    } else if (target == screen) {
+        if ($(video).is(':checked'))
+            $(video).prop('checked', false);
+    }
 }
 
 function removeUser (id) {
@@ -37,23 +51,38 @@ function setId (id) {
 
 //WEBRTC STUFF
 var peer;
+var options = {video: false, audio: false};
+var checked = {video: false, screen: false, audio: false};
+var called = false;
 
 function callPerson (e) {
-    //Add a basic video and screen place to the body
     e.preventDefault();
+    //Check kind of call
+    var audio = $(e.target).parent().parent().find('input:first-child')[0],
+        video = $(e.target).parent().parent().find('input:nth-child(2)')[0],
+        screen = $(e.target).parent().parent().find('input:nth-child(3)')[0];
+    
+    checked.audio = $(audio).is(':checked');
+    checked.video = $(video).is(':checked');
+    checked.screen = $(screen).is(':checked');
+
+    options.video = checked.screen || checked.video;
+    options.audio = checked.audio;
+
+    if (!(options.video || options.audio)) {
+        alert('No options selected!');
+        return;
+    }
+    //Get Callee ID
     var id = $(this).parent().parent().attr('id');
     callIds.otherId = id;
-    $('body').html('<p>Calling...</p>');
-    //Get the User Media
-    navigator.mediaDevices.getUserMedia({
-        video: {
-            width: {max: 1920},
-            height: {max: 1080},
-            frameRate: {max: 10},
-            mediaStreamSource: {exact: ['desktop']}
-          },
-        audio: false
-    }).then(function (stream) {
+
+    //Call Screen
+    $('#call-cover').css('display', 'flex');
+    $('#call-screen').fadeIn();
+
+    //Get the Checked Media
+    getCheckedMedia(options).then(function (stream) {
         peer = new SimplePeer({
             initiator: true,
             trickle: false,
@@ -61,22 +90,19 @@ function callPerson (e) {
         });
 
         peer.on('signal', function (data) { //Fired by Initiator
-            if (i == 0) {
-                i++;
+            if (!called) {
+                called = true;
                 socket.emit('calling', data, callIds);
             }
         });
 
+        //Video Stream
+        peer.on('stream', function (stream) { showCheckedMedia(stream) });
+
+        //For Messages later
         peer.on('data', function (msg) {
             console.log(msg);
         })
-
-        peer.on('stream', function (stream) {
-            var video = document.createElement('video');
-            document.body.appendChild(video);
-            video.srcObject = stream;
-            video.play();
-        });
 
         }).catch(function (err) {
             console.log(err);
@@ -85,51 +111,126 @@ function callPerson (e) {
 }
 
 function respond (data, otherId) {
+    //Caller ID
     callIds.otherId = otherId;
-    //Add a basic video and screen place to the body
-    $('body').html('<p>Connecting to a caller...</p>');
-    //WebRTC Stuff
-    navigator.mediaDevices.getUserMedia({
-        // video: {
-        //     width: {max: 1920},
-        //     height: {max: 1080},
-        //     frameRate: {max: 10},
-        //     mediaStreamSource: {exact: ['desktop']}
-        //   },
-        audio: true
-    }).then(function (stream) {
 
-        peer = new SimplePeer({
-            initiator: false,
-            trickle: false,
-            stream: stream
-        });
+    //Confirmation Screen
+    var confirmBox = $('#confirm-screen');
+    $('#call-cover').css('display', 'flex');
+    $('#caller-id').text(callIds.otherId);
+    confirmBox.fadeIn();
 
-        peer.signal(data);
+    //Prevent Double Screen Response
+    confirmBox.find('form').click(preventDoubleScreen);
 
-        peer.on('signal', function (response) {
-            console.log(response);
-            socket.emit('responded', response, callIds.otherId);
-        })
+    //Once it has been confirmed
+    confirmBox.find('button').click(function (e) {
+        e.preventDefault();
+        //Check kind of reply
+        var audio = confirmBox.find('input:first-child')[0],
+        video = confirmBox.find('input:nth-child(2)')[0],
+        screen = confirmBox.find('input:nth-child(3)')[0];
 
-        peer.on('data', function (msg) {
-            console.log(msg);
-        })
+        checked.audio = $(audio).is(':checked');
+        checked.video = $(video).is(':checked');
+        checked.screen = $(screen).is(':checked');
 
-        peer.on('stream', function (stream) {
-            var video = document.createElement('video');
-            document.body.appendChild(video);
-            video.srcObject = stream;
-            video.play();
-        })
+        options.video = checked.screen || checked.video;
+        options.audio = checked.audio;
+        
+        if (!(options.video || options.audio)) {
+            alert('No options selected!');
+            return;
+        }
 
-        }).catch(function (err) {
-            console.log(err);
-        });
+        //Call Screen
+        confirmBox.hide();
+        $('#call-cover').css('display', 'flex');
+        $('#call-screen').fadeIn();
+        //Get the checked media
+        getCheckedMedia(options).then(function (stream) {
+            peer = new SimplePeer({
+                initiator: false,
+                trickle: false,
+                stream: stream
+            });
+
+            //First respond to the call
+            peer.signal(data);
+
+            //Send the Response to caller
+            peer.on('signal', function (response) {
+                socket.emit('responded', response, callIds.otherId);
+            });
+
+            //Video Stream
+            peer.on('stream', function (stream) { showCheckedMedia(stream) });
+
+            //Message
+            peer.on('data', function (msg) {
+                console.log(msg);
+            })
+
+            }).catch(function (err) {
+                console.log(err);
+            });
+    });
 
 }
 
+function getCheckedMedia (options) {
+    return navigator.mediaDevices.enumerateDevices()
+    .then(devices => {
+        //Check if devices are available
+        var cams = devices.filter(device => device.kind == "videoinput");
+        var mics = devices.filter(device => device.kind == "audioinput");
+        //Put in constraints to test against checked values
+        var constraints = { video: cams.length > 0, audio: mics.length > 0 };
+        
+        if (checked.video) {
+            //Video
+            options.video = constraints.video && options.video;
+            options.audio = constraints.audio && options.audio;
+            return eval(navigator.mediaDevices.getUserMedia(options));
+        } else if (checked.screen) {
+            //Screen
+            options.audio = constraints.audio && options.audio;
+            if (navigator.getDisplayMedia) {
+                return eval(navigator.getDisplayMedia(options));
+            } else if (navigator.mediaDevices.getDisplayMedia) {
+                return eval(navigator.mediaDevices.getDisplayMedia(options));
+            } else {
+                return eval(navigator.mediaDevices.getUserMedia({video: {mediaSource: 'screen'}, audio: options.audio}));
+            }
+        } else if (checked.audio) {
+            //Audio Only
+            options.audio = constraints.audio && options.audio;
+            return eval(navigator.mediaDevices.getUserMedia(options));
+        }
+    })
+}
+
+function showCheckedMedia (stream) {
+    //Call Container - Adjust Width Height
+    var container = $('#call-container');
+    //Append Stream
+    if (options.video) {
+        console.log("Video Started");
+        var video = document.createElement('video');
+        video.style.zIndex = 10;
+        container.append(video);
+        video.srcObject = stream;
+        video.play();
+    } else if (options.audio) {
+        var audio = document.createElement('audio');
+        audio.style.zIndex = 10;
+        container.append(audio);
+        audio.srcObject = stream;
+        audio.play();
+    }
+}
+
+//Acknowledge the response
 function startCall (response) {
-    console.log(response);
     peer.signal(response);
 }
