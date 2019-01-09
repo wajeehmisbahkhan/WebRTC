@@ -3,7 +3,7 @@ var callIds = {
     otherId: ''
 };
 
-var socket = io.connect('http://localhost:3000');
+var socket = io.connect('https://wajeehmisbahkhan.herokuapp.com/'); //Change to local for local testing
 
 socket.on('user came', addUser);
 socket.on('set user id', setId);
