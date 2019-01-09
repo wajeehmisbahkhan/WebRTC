@@ -82,4 +82,5 @@ input {
 }
 #call-controls button {
     margin: 0 15px;
+    z-index: 20;
 }

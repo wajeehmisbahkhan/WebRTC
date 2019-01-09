@@ -46,10 +46,10 @@ function newConnection (socket) {
     socket.on('responded', connectClients);
 }
 
-function generateResponse (data, callIds) {
-    io.to(callIds.otherId).emit('recieving call', data, callIds.myId);
+function generateResponse (data, callIds, options) {
+    io.to(callIds.otherId).emit('recieving call', data, callIds.myId, options);
 }
 
-function connectClients (response, caller) {
-    io.to(caller).emit('call recieved', response);
+function connectClients (response, caller, options) {
+    io.to(caller).emit('call recieved', response, options);
 }

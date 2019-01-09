@@ -53,7 +53,10 @@ function setId (id) {
 var peer;
 var options = {video: false, audio: false};
 var checked = {video: false, screen: false, audio: false};
+var record = options;
 var called = false;
+var mediaRecorder;
+var chunks = [];
 
 function callPerson (e) {
     e.preventDefault();
@@ -92,7 +95,7 @@ function callPerson (e) {
         peer.on('signal', function (data) { //Fired by Initiator
             if (!called) {
                 called = true;
-                socket.emit('calling', data, callIds);
+                socket.emit('calling', data, callIds, options);
             }
         });
 
@@ -110,7 +113,9 @@ function callPerson (e) {
 
 }
 
-function respond (data, otherId) {
+function respond (data, otherId, otherOptions) {
+    //Record
+    record = otherOptions;
     //Caller ID
     callIds.otherId = otherId;
 
@@ -160,11 +165,11 @@ function respond (data, otherId) {
 
             //Send the Response to caller
             peer.on('signal', function (response) {
-                socket.emit('responded', response, callIds.otherId);
+                socket.emit('responded', response, callIds.otherId, options);
             });
 
             //Video Stream
-            peer.on('stream', function (stream) { showCheckedMedia(stream) });
+            peer.on('stream', function (stream) { showCheckedMedia(stream); });
 
             //Message
             peer.on('data', function (msg) {
@@ -215,7 +220,6 @@ function showCheckedMedia (stream) {
     var container = $('#call-container');
     //Append Stream
     if (options.video) {
-        console.log("Video Started");
         var video = document.createElement('video');
         video.style.zIndex = 10;
         container.append(video);
@@ -228,9 +232,90 @@ function showCheckedMedia (stream) {
         audio.srcObject = stream;
         audio.play();
     }
+    //Recording
+    if (record.video || record.audio)
+        enableRecording(stream);
+    else
+        console.log("No options enabled by other person");
+    //End Call
+    $('#end-call').click(function () { endCall(stream); });
 }
 
 //Acknowledge the response
-function startCall (response) {
+function startCall (response, otherOptions) {
+    record = otherOptions;
     peer.signal(response);
+}
+
+//Recording
+function enableRecording (stream) {
+    var controlBox = $('#call-controls');
+    controlBox.find('#video-record').prop('disabled', false)
+              .click(function () { startRecording(stream); });
+}
+
+function startRecording (stream) {
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = function(e) {
+        chunks.push(e.data);
+    }
+    mediaRecorder.start();
+    $("#video-record").prop('disabled', true);
+    $("#video-record-pause").prop('disabled', false).click(function (e) { pauseRecording(); });
+}
+
+function pauseRecording () {
+    mediaRecorder.pause();
+    $("#video-record").prop('disabled', false).text("Resume Recording");
+    $("#video-record-pause").prop('disabled', true).click(function (e) { resumeRecording(); });
+}
+
+function resumeRecording () {
+    mediaRecorder.resume();
+    $("#video-record").prop('disabled', true);
+    $("#video-record-pause").prop('disabled', false);
+}
+
+function endCall (stream) {
+    if (mediaRecorder)
+        stopRecording();
+    stream.getTracks().forEach(track => track.stop());
+    $('#call-cover').fadeOut();
+    $('#call-screen').hide();
+}
+
+function stopRecording () {
+    $("#video-record").prop('disabled', false);
+    $("#video-record-pause").prop('disabled', false);
+    mediaRecorder.onstop = function (e) {
+
+        var recordedElement;
+        if (record.video)
+            recordedElement = document.createElement('video');
+        else if (record.audio)
+            recordedElement = document.createElement('audio');
+        var clipContainer = document.createElement('article');
+        var clipLabel = document.createElement('p');
+        var deleteButton = document.createElement('button');
+        clipContainer.classList.add('clip');
+        recordedElement.setAttribute('controls', '');
+        deleteButton.innerHTML = "Delete";
+        clipLabel.innerHTML = "Produced Media";
+
+        clipContainer.appendChild(recordedElement);
+        clipContainer.appendChild(clipLabel);
+        clipContainer.appendChild(deleteButton);
+        document.body.appendChild(clipContainer);
+
+        var superBuffer = new Blob(chunks);
+        chunks = []; //Empty
+        recordedElement.src = window.URL.createObjectURL(superBuffer);
+
+        deleteButton.onclick = function(e) {
+            var evtTgt = e.target;
+            evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
+        }
+
+    }
+    mediaRecorder.stop();
 }
