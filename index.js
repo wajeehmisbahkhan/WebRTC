@@ -4,7 +4,7 @@ var express = require('express');
 
 var app = express();
 
-var server = app.listen(3000, started);
+var server = app.listen(process.env.PORT || 3000, started);
 
 function started () {
     console.log("Server has started listening.");
